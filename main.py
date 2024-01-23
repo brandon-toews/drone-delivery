@@ -20,7 +20,7 @@ def main():
             # with changed slider values
             graph_width = st.slider(label='Width', min_value=50, max_value=1000, value=250, step=5)
             graph_height = st.slider(label='Height', min_value=50, max_value=1000, value=250, step=5)
-            num_nodes = st.slider(label='Number of Nodes', min_value=5, max_value=100, value=27)
+            num_nodes = st.slider(label='Number of Nodes', min_value=5, max_value=60, value=27)
             
             # Anytime button is pushed entire script runs again creating a new graph
             # with the same values but different configuration

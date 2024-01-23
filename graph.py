@@ -34,18 +34,20 @@ class Graph:
         hub_pos = (int(self.width/2), int(self.height/2))
         self.nodes.append(Node('Hub', hub_pos))
 
-        min_distance = self.width/10
+        min_distance = (self.width+self.height/2)/10
+
+        max_attempts = 1000  # Maximum number of attempts to find a new position
 
         # Create rest of specified nodes in graph
         if self.num_nodes < 28:
             for i in range(self.num_nodes-1):
-                while True:
+                
+                for attempt in range(max_attempts):
                     pos = (random.randint(0, self.width), random.randint(0, self.height))
-
-                    if all(math.sqrt((node.pos[0] - pos[0])**2 + (node.pos[1] - pos[1])**2) >= min_distance for node in self.nodes):
+                    if all(euc_dist(node.pos,pos) >= min_distance for node in self.nodes):
                         # Position is far enough from all nodes, break the loop
                         break
-                #pos = (random.randint(0,self.width), random.randint(0,self.height))
+                
                 self.nodes.append(Node(self.names[i], pos))
         else:
             for i in range(len(self.names)):
@@ -53,13 +55,12 @@ class Graph:
                     # stop creating nodes when specified amount is reached
                     if len(self.nodes) == self.num_nodes: break
 
-                    while True:
+                    for attempt in range(max_attempts):
                         pos = (random.randint(0, self.width), random.randint(0, self.height))
-
-                        if all(math.sqrt((node.pos[0] - pos[0])**2 + (node.pos[1] - pos[1])**2) >= min_distance for node in self.nodes):
+                        if all(euc_dist(node.pos,pos) >= min_distance for node in self.nodes):
                             # Position is far enough from all nodes, break the loop
                             break
-                    #pos = (random.randint(0,self.width), random.randint(0,self.height))
+                   
                     self.nodes.append(Node(self.names[i]+self.names[j], pos))
 
                     
