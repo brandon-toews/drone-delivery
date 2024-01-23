@@ -2,6 +2,7 @@ import random
 import math
 import sys
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from bokeh.plotting import figure, show
@@ -41,7 +42,7 @@ class Graph:
         # Create rest of specified nodes in graph
         if self.num_nodes < 28:
             for i in range(self.num_nodes-1):
-                
+
                 for attempt in range(max_attempts):
                     pos = (random.randint(0, self.width), random.randint(0, self.height))
                     if all(euc_dist(node.pos,pos) >= min_distance for node in self.nodes):
@@ -101,10 +102,11 @@ class Graph:
 
     # plot graph
     def plot_graph(self):
-        f = plt.figure(figsize=(10,10))
+        f = plt.figure(figsize=(11,10))
 
-        colors = {1:"darkgreen", 2:"green", 3:"darkorange",
-                        4:"red", 5:"darkred"}
+        # Traffic color dictionary
+        colors = {1:"green", 2:"limegreen", 3:"gold",
+                        4:"darkorange", 5:"red"}
 
         # Plot connections
         for node in self.nodes:
@@ -132,7 +134,13 @@ class Graph:
                 plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='magenta')
             # Display name of node and center the text
             plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center', color='white', weight='semibold')
-            
+
+        # Produce patches for plot legend from traffic colors dict
+        patches = [mpatches.Patch(color=colors[key], label=key) for key in colors]
+        
+        # Plot legend
+        f.legend(handles=patches, title="Traffic Levels", bbox_to_anchor=(0.9, 0.9), loc='upper left')  
+
         return f
 
 
