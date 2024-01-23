@@ -4,6 +4,9 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
+from bokeh.plotting import figure, show
+from bokeh.models import LabelSet, ColumnDataSource
+
 
 names = [
     'A','B','C','D','E','F','G','H','I','J',
@@ -97,7 +100,7 @@ class Graph:
 
     # plot graph
     def plot_graph(self):
-        plt.figure(figsize=(10,10))
+        f = plt.figure(figsize=(10,10))
 
         colors = {1:"darkgreen", 2:"green", 3:"darkorange",
                         4:"red", 5:"darkred"}
@@ -110,23 +113,26 @@ class Graph:
                     [node.pos[0], neighbor.pos[0]], 
                     [node.pos[1], neighbor.pos[1]],
                     color=colors[node.neighbors[neighbor][1]],
-                    linewidth=2)
+                    linewidth=4)
 
                 # Calculate midpoint
                 mid_x = (node.pos[0] + neighbor.pos[0]) / 2
                 mid_y = (node.pos[1] + neighbor.pos[1]) / 2
 
                 # Display distance
-                plt.text(mid_x, mid_y, str(node.neighbors[neighbor][0]), color='red')  # data[0] is the distance
+                plt.text(mid_x, mid_y, str(node.neighbors[neighbor][0]))  # data[0] is the distance
 
         # Plot nodes
         for node in self.nodes:
             # Place plots
-            plt.plot(node.pos[0], node.pos[1], 'o', markersize=20)
+            if node.name == 'Hub':
+                plt.plot(node.pos[0], node.pos[1], 'o', markersize=25, color='blue')
+            else:
+                plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='magenta')
             # Display name of node and center the text
-            plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center', color='white')
+            plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center', color='white', weight='semibold')
             
-        plt.show()
+        return f
 
 
 # Euclidean distance function
