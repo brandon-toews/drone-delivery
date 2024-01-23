@@ -11,6 +11,7 @@ def main():
     tab1, tab2, tab3 = sidebar.tabs(['Graph', 'A*', 'Ant Colony'])
 
     with sidebar:
+        
         # Graph tab
         with tab1:
             # Tab header
@@ -26,14 +27,37 @@ def main():
             # with the same values but different configuration
             create_graph_button = st.button(label='Reset Graph')
 
-    # Create graph
-    graph = gp.Graph(graph_width, graph_height, num_nodes)
+    # Check if any of the slider values have changed
+    sliders_changed = (
+        'graph_width' not in st.session_state or st.session_state.graph_width != graph_width or
+        'graph_height' not in st.session_state or st.session_state.graph_height != graph_height or
+        'num_nodes' not in st.session_state or st.session_state.num_nodes != num_nodes
+    )
+
+    if create_graph_button or 'graph' not in st.session_state or sliders_changed:
+
+        # Create graph
+        graph = gp.Graph(graph_width, graph_height, num_nodes)
+
+        # Save the graph and slider values in the session state
+        st.session_state.graph = graph
+        st.session_state.graph_width = graph_width
+        st.session_state.graph_height = graph_height
+        st.session_state.num_nodes = num_nodes
 
     # Generate plot from graph
-    plot = graph.plot_graph()
-
+    plot = st.session_state.graph.plot_graph()
+         
     # Display plot on streamlit
-    st.pyplot(plot)
+    st.pyplot(plot) 
+
+    # Graph tab
+    with tab2:
+        # Tab header
+        st.header('A* Search')
+
+        if 'graph' in st.session_state:
+            goal = st.selectbox(label='Select goal', options=[node.name for node in st.session_state.graph.nodes])
 
 if __name__ == '__main__':
     main()
