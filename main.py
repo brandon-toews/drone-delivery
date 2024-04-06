@@ -3,12 +3,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+
 def main():
-    # Create UI sidbar
+    # Create UI sidebar
     sidebar = st.sidebar
     
     # Create tabs in sidebar
     tab1, tab2, tab3 = sidebar.tabs(['Graph', 'A*', 'Ant Colony'])
+
+    # Initialize goal
+    goal = None
+    astar_euc_dist = None
 
     with sidebar:
         
@@ -34,6 +39,8 @@ def main():
         'num_nodes' not in st.session_state or st.session_state.num_nodes != num_nodes
     )
 
+    astar_goal_change = 'goal' not in st.session_state or st.session_state.goal != goal
+
     if create_graph_button or 'graph' not in st.session_state or sliders_changed:
 
         # Create graph
@@ -45,19 +52,43 @@ def main():
         st.session_state.graph_height = graph_height
         st.session_state.num_nodes = num_nodes
 
-    # Generate plot from graph
-    plot = st.session_state.graph.plot_graph()
-         
-    # Display plot on streamlit
-    st.pyplot(plot) 
+    if astar_goal_change:
+        st.session_state.goal = goal
+        if goal is not None:
+            astar_euc_dist = gp.euc_dist(st.session_state.graph.nodes['Hub'].pos, st.session_state.graph.nodes[goal].pos)
 
-    # Graph tab
+    # A* tab
     with tab2:
         # Tab header
         st.header('A* Search')
 
+        # Tell user source node
+        st.text_input(
+            "Source node:",
+            disabled=True,
+            placeholder='Hub',
+        )
+
         if 'graph' in st.session_state:
-            goal = st.selectbox(label='Select goal', options=[node.name for node in st.session_state.graph.nodes])
+            goal = st.selectbox(label='Select destination node:',
+                                options=[key for key in st.session_state.graph.nodes if not key == 'Hub'])
+
+        # Calculate euclidean distance from source to destination
+        astar_euc_dist = gp.euc_dist(st.session_state.graph.nodes['Hub'].pos, st.session_state.graph.nodes[goal].pos)
+
+        # Tell user source node
+        st.text_input(
+            "Euclidean distance from source to destination:",
+            disabled=True,
+            placeholder=astar_euc_dist,
+        )
+
+    # Generate plot from graph
+    plot = st.session_state.graph.plot_graph(goal)
+         
+    # Display plot on streamlit
+    st.pyplot(plot)
+
 
 if __name__ == '__main__':
     main()
