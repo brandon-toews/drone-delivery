@@ -1,5 +1,6 @@
 import graph as gp
 import streamlit as st
+import drone as dp
 import pandas as pd
 import numpy as np
 
@@ -13,7 +14,8 @@ def main():
 
     # Initialize goal
     goal = None
-    astar_euc_dist = None
+    astar_exploration = None
+    astar_best_path = None
 
     with sidebar:
         
@@ -83,8 +85,35 @@ def main():
             placeholder=astar_euc_dist,
         )
 
+        # Heuristic type
+        heuristic_type = st.selectbox('Heuristic Type', ['None', 'Euclidean', 'Euclidean + Traffic Aware'], index=2)
+
+        astar_search_button = st.button('Perform A* Search')
+
+        # Perform A* search
+        if astar_search_button and 'graph' in st.session_state and goal is not None:
+            # Create drone object
+            astar_drone = dp.Drone('A*',
+                                   st.session_state.graph,
+                                   st.session_state.graph.nodes['Hub'],
+                                   st.session_state.graph.nodes[goal],
+                                   heuristic_type)
+
+            # Perform A* search
+            path = astar_drone.astar_search()
+
+            # Display path on streamlit
+            st.write(f'**Path:** {gp.retrieve_path_names(path[0])}')
+            # Display path cost on streamlit
+            if path[1] is not None:
+                st.write(f'**Path cost:** {path[1]}min')
+
+            # Save exploration and best path
+            astar_exploration = astar_drone.explored_nodes()
+            astar_best_path = path[0]
+
     # Generate plot from graph
-    plot = st.session_state.graph.plot_graph(goal)
+    plot = st.session_state.graph.plot_graph(goal, astar_exploration, astar_best_path)
          
     # Display plot on streamlit
     st.pyplot(plot)

@@ -86,50 +86,113 @@ class Graph:
                 # calculate euclidean distance of selected nodes
                 distance = int(euc_dist(node.pos, other_node.pos))
 
-                # if both nodes selected aren't the same and distance is lower
-                # than the closest node found so far
-                if not node == other_node and distance < next_closest_distance:
-                    # store closest node
-                    next_closest_distance = distance
-                    next_closest_node = other_node
+                if other_node not in node.neighbors:
+                    # if both nodes selected aren't the same and distance is lower
+                    # than the closest node found so far
+                    if not node == other_node and distance < next_closest_distance:
+                        # store closest node
+                        next_closest_distance = distance
+                        next_closest_node = other_node
 
-                # if both nodes selected aren't the same and distance is close enough
-                if not node == other_node and distance < int(self.width/4):
-                    # Add node to neighbors dict with distance 
+                    # if both nodes selected aren't the same and distance is close enough
+                    if not node == other_node and distance < int(self.width/4):
+                        # Add node to neighbors dict with distance
+                        # and randomly generated traffic for connection
+                        traffic = random.randint(1, 5)
+
+                        # Calculate speed(mph) based on traffic level
+                        # 1 = 30mph, 2 = 25mph, 3 = 20mph, 4 = 15mph, 5 = 10mph
+                        speed = 35 - traffic * 5
+
+                        # Calculate travel cost based on speed converted to minutes
+                        travel_cost = int((distance / speed) * 60)
+
+                        node.neighbors[other_node] = [distance, traffic, travel_cost]
+                        other_node.neighbors[node] = [distance, traffic, travel_cost]
+
+            if next_closest_node not in node.neighbors:
+                # if no nodes were close enough to connect to than connect to
+                # the closest node
+                if not len(node.neighbors):
+                    # Add node to neighbors dict with distance
                     # and randomly generated traffic for connection
-                    node.neighbors[other_node] = [distance, random.randint(1, 5)]
+                    traffic = random.randint(1, 5)
 
-            # if no nodes were close enough to connect to than connect to 
-            # the closest node
-            if not len(node.neighbors):
-                # Add node to neighbors dict with distance 
-                # and randomly generated traffic for connection
-                node.neighbors[next_closest_node] = [next_closest_distance, random.randint(1, 5)]
+                    # Calculate speed(mph) based on traffic level
+                    # 1 = 30mph, 2 = 25mph, 3 = 20mph, 4 = 15mph, 5 = 10mph
+                    speed = 35 - traffic * 5
+
+                    # Calculate travel cost based on speed converted to minutes
+                    travel_cost = int((next_closest_distance / speed) * 60)
+
+                    node.neighbors[next_closest_node] = [next_closest_distance, traffic, travel_cost]
+                    next_closest_node.neighbors[node] = [next_closest_distance, traffic, travel_cost]
 
     # Function to plot graph with or without selected nodes
-    def plot_graph(self, selected_node_names=None):
+    def plot_graph(self, selected_node_names=None, astar_exploration=None, astar_path=None):
         f = plt.figure(figsize=(11, 10))
 
         # Traffic color dictionary
         colors = {1: "green", 2: "limegreen", 3: "gold",
                   4: "darkorange", 5: "red"}
 
-        # Plot connections
+        # Plot connection to explored nodes
+        if astar_exploration is not None:
+            for node in astar_exploration:
+                for neighbor in node.neighbors:
+                    if neighbor in astar_exploration:
+                        plt.plot(
+                            # Plot line between nodes
+                            [node.pos[0], neighbor.pos[0]],
+                            [node.pos[1], neighbor.pos[1]],
+                            # Set color of line of explored nodes
+                            color='hotpink',
+                            # Set line width
+                            linewidth=15)
+
+        # Plot connection to path nodes
+        if astar_path is not None:
+            for i in range(len(astar_path) - 1):
+                node = astar_path[i]
+                next_node = astar_path[i + 1]
+                plt.plot(
+                    # Plot line between nodes
+                    [node.pos[0], next_node.pos[0]],
+                    [node.pos[1], next_node.pos[1]],
+                    # Set color of line based of best path
+                    color='cyan',
+                    # Set line width
+                    linewidth=15)
+
+        # Loop through all nodes in graph
         for node in self.nodes.values():
+            # Loop through neighbors of node
             for neighbor in node.neighbors:
 
+                # Plot connections
                 plt.plot(
+                    # Plot line between nodes
                     [node.pos[0], neighbor.pos[0]],
                     [node.pos[1], neighbor.pos[1]],
+                    # Set color of line based on traffic level
                     color=colors[node.neighbors[neighbor][1]],
+                    # Set line width
                     linewidth=4)
 
                 # Calculate midpoint
                 mid_x = (node.pos[0] + neighbor.pos[0]) / 2
                 mid_y = (node.pos[1] + neighbor.pos[1]) / 2
 
+                # Calculate speed(mph) based on traffic level
+                # 1 = 30mph, 2 = 25mph, 3 = 20mph, 4 = 15mph, 5 = 10mph
+                speed = 35 - node.neighbors[neighbor][1]*5
+
+                # Calculate travel cost based on speed converted to minutes
+                travel_cost = int((node.neighbors[neighbor][0] / speed) * 60)
+
                 # Display distance
-                plt.text(mid_x, mid_y, str(node.neighbors[neighbor][0]))  # data[0] is the distance
+                plt.text(mid_x, mid_y, str(node.neighbors[neighbor][0])+'mi')  # data[0] is the distance
+                plt.text(mid_x - 10.0, mid_y - 5.0, 'Cost: ' + str(node.neighbors[neighbor][2]) + 'min')
 
         # Plot nodes
         for node in self.nodes.values():
@@ -173,6 +236,18 @@ def euc_dist(a, b):
         math.pow(a[0]-b[0], 2) +
         math.pow(a[1]-b[1], 2)
     )
+
+
+# Function to print names of path
+def retrieve_path_names(path):
+    if path is None:
+        return 'No path found'
+    else:
+        path_str = ''
+        for i in range(len(path)-1):
+            path_str += path[i].name + ' -> '
+        path_str += path[len(path)-1].name
+        return path_str
         
 
 class Node:
