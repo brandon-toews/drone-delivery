@@ -136,6 +136,10 @@ class Graph:
         colors = {1: "green", 2: "limegreen", 3: "gold",
                   4: "darkorange", 5: "red"}
 
+        # Urgency color dictionary
+        cmap = cm.get_cmap('cool')
+        urgencies = {i: cmap(i / 5) for i in range(6)}
+
         # Plot connection to explored nodes
         if astar_exploration is not None:
             for node in astar_exploration:
@@ -200,7 +204,7 @@ class Graph:
             if node.name == 'Hub':
                 plt.plot(node.pos[0], node.pos[1], 'o', markersize=25, color='blue')
             else:
-                plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='magenta')
+                plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='purple')
             # Display name of node and center the text
             plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center', color='white', weight='semibold')
 
@@ -209,15 +213,33 @@ class Graph:
             selected_nodes = self.select_nodes(selected_node_names)
 
             for node in selected_nodes:
-                plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='cyan')
+                # Determine the size and color of the node based on its urgency value
+                urgency = node.delivery_urgency
+                node_size = 20 + 4 * urgency
+                node_color = cm.ScalarMappable(norm=Normalize(vmin=0, vmax=5), cmap=cmap).to_rgba(urgency)
+                # Change this to any colormap you prefer
+
+                plt.plot(node.pos[0], node.pos[1], 'o', markersize=node_size, color=node_color)
                 plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center',
                          color='white', weight='semibold')
 
-        # Produce patches for plot legend from traffic colors dict
-        patches = [mpatches.Patch(color=colors[key], label=key) for key in colors]
+                '''plt.plot(node.pos[0], node.pos[1], 'o', markersize=20, color='cyan')
+                plt.text(node.pos[0], node.pos[1], node.name, ha='center', va='center',
+                         color='white', weight='semibold')
+                plt.text(node.pos[0]-5.0, node.pos[1]-5.0, '1', ha='center', va='center',
+                         color='black', weight='semibold')'''
 
-        # Plot legend
-        f.legend(handles=patches, title="Traffic Levels", bbox_to_anchor=(0.9, 0.9), loc='upper left')
+        # Produce patches for plot legend from traffic colors dict
+        traffic_patches = [mpatches.Patch(color=colors[key], label=key) for key in colors]
+
+        # Produce patches for plot legend from urgency colors dict
+        urgency_patches = [mpatches.Patch(color=urgencies[key], label=key if key != 0 else 'None') for key in urgencies]
+
+        # Plot traffic legend
+        f.legend(handles=traffic_patches, title="Traffic Levels", bbox_to_anchor=(0.9, 0.9), loc='upper left')
+
+        # Plot urgency legend
+        f.legend(handles=urgency_patches, title="Urgency Levels", bbox_to_anchor=(0.9, 0.75), loc='upper left')
 
         return f
 
@@ -254,4 +276,5 @@ class Node:
     def __init__(self, name, pos):
         self.name = name
         self.pos = pos
+        self.delivery_urgency = 0
         self.neighbors = {}

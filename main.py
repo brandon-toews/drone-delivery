@@ -1,6 +1,8 @@
+import random
+
 import graph as gp
 import streamlit as st
-import drone as dp
+import a_star as ar
 import pandas as pd
 import numpy as np
 
@@ -10,12 +12,15 @@ def main():
     sidebar = st.sidebar
     
     # Create tabs in sidebar
-    tab1, tab2, tab3 = sidebar.tabs(['Graph', 'A*', 'Ant Colony'])
+    tab1, tab2, tab3 = sidebar.tabs(['Graph', 'A*', 'Genetic Algorithm'])
 
-    # Initialize goal
+    # Initialize A* variables
     goal = None
     astar_exploration = None
     astar_best_path = None
+
+    # Initialize GA variables
+    #goals = []
 
     with sidebar:
         
@@ -41,8 +46,6 @@ def main():
         'num_nodes' not in st.session_state or st.session_state.num_nodes != num_nodes
     )
 
-    astar_goal_change = 'goal' not in st.session_state or st.session_state.goal != goal
-
     if create_graph_button or 'graph' not in st.session_state or sliders_changed:
 
         # Create graph
@@ -54,10 +57,15 @@ def main():
         st.session_state.graph_height = graph_height
         st.session_state.num_nodes = num_nodes
 
-    if astar_goal_change:
+    goal_change = 'goal' not in st.session_state or st.session_state.goal != goal
+
+    if goal_change:
         st.session_state.goal = goal
-        if goal is not None:
-            astar_euc_dist = gp.euc_dist(st.session_state.graph.nodes['Hub'].pos, st.session_state.graph.nodes[goal].pos)
+
+    goals_change = 'goals' not in st.session_state #or st.session_state.goals != goals
+
+    if goals_change:
+        st.session_state.goals = []
 
     # A* tab
     with tab2:
@@ -76,7 +84,8 @@ def main():
                                 options=[key for key in st.session_state.graph.nodes if not key == 'Hub'])
 
         # Calculate euclidean distance from source to destination
-        astar_euc_dist = gp.euc_dist(st.session_state.graph.nodes['Hub'].pos, st.session_state.graph.nodes[goal].pos)
+        astar_euc_dist = gp.euc_dist(st.session_state.graph.nodes['Hub'].pos,
+                                     st.session_state.graph.nodes[goal].pos)
 
         # Tell user source node
         st.text_input(
@@ -92,15 +101,19 @@ def main():
 
         # Perform A* search
         if astar_search_button and 'graph' in st.session_state and goal is not None:
-            # Create drone object
-            astar_drone = dp.Drone('A*',
+            for key in st.session_state.goals:
+                st.session_state.graph.nodes[key].delivery_urgency = 0
+            st.session_state.goals = []
+            st.session_state.goal = goal
+            # Create agent object
+            astar_agent = ar.Agent('A*',
                                    st.session_state.graph,
                                    st.session_state.graph.nodes['Hub'],
                                    st.session_state.graph.nodes[goal],
                                    heuristic_type)
 
             # Perform A* search
-            path = astar_drone.astar_search()
+            path = astar_agent.astar_search()
 
             # Display path on streamlit
             st.write(f'**Path:** {gp.retrieve_path_names(path[0])}')
@@ -109,14 +122,71 @@ def main():
                 st.write(f'**Path cost:** {path[1]}min')
 
             # Save exploration and best path
-            astar_exploration = astar_drone.explored_nodes()
+            astar_exploration = astar_agent.explored_nodes()
             astar_best_path = path[0]
 
-    # Generate plot from graph
-    plot = st.session_state.graph.plot_graph(goal, astar_exploration, astar_best_path)
-         
-    # Display plot on streamlit
-    st.pyplot(plot)
+    # Genetic Algorithm tab
+    with tab3:
+        # Tab header
+        st.header('Genetic Algorithm')
+
+        # Tell user source node
+        ga_source = st.text_input(
+            "Source:",
+            disabled=True,
+            placeholder='Hub',
+        )
+
+        # Generate goals button
+        generate_goals_button = st.button('Randomly Select Destination Nodes')
+
+        # randomly select 10 nodes as goals
+        if generate_goals_button:
+            random_goals = np.random.choice([key for key in st.session_state.graph.nodes if not key == 'Hub'], 10,
+                                     replace=False)
+            random_goals = list(random_goals)
+            st.session_state.goals = list(random_goals)
+            for key in st.session_state.goals:
+                st.session_state.graph.nodes[key].delivery_urgency = random.randint(1, 5)
+
+        # Select destination node to add to goals
+        #add_goal = st.selectbox(label='Add destination node:',
+        #                        options=[key for key in st.session_state.graph.nodes
+        #                                 if not key == 'Hub' and key not in st.session_state.goals])
+        # Add selected destination node
+        #add_goal_button = st.button('Add destination node')
+
+        # Add destination node to goals
+        #if add_goal_button:
+        #    st.session_state.goals.append(add_goal)
+
+        # Display goals on streamlit
+        st.write(f'**Goals:** {st.session_state.goals}')
+
+        gen_alg_button = st.button('Perform Genetic Algorithm')
+
+
+    if astar_search_button:
+        # Generate plot from graph
+        plot = st.session_state.graph.plot_graph(st.session_state.goal, astar_exploration, astar_best_path)
+
+        # Display plot on streamlit
+        st.pyplot(plot)
+    elif generate_goals_button or gen_alg_button:
+        # Generate plot from graph
+        plot = st.session_state.graph.plot_graph(st.session_state.goals)
+
+        # Display plot on streamlit
+        st.pyplot(plot)
+
+    else:
+        # Generate plot from graph
+        plot = st.session_state.graph.plot_graph()
+
+        # Display plot on streamlit
+        st.pyplot(plot)
+
+
 
 
 if __name__ == '__main__':
