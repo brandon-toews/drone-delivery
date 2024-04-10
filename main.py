@@ -3,6 +3,7 @@ import random
 import graph as gp
 import streamlit as st
 import a_star as ar
+import gen_alg as ga
 import pandas as pd
 import numpy as np
 
@@ -113,22 +114,25 @@ def main():
                                    heuristic_type)
 
             # Perform A* search
-            path = astar_agent.astar_search()
+            astar_path, astar_cost = astar_agent.astar_search()
 
             # Display path on streamlit
-            st.write(f'**Path:** {gp.retrieve_path_names(path[0])}')
+            st.write(f'**Path:** {gp.retrieve_path_names(astar_path)}')
             # Display path cost on streamlit
-            if path[1] is not None:
-                st.write(f'**Path cost:** {path[1]}min')
+            if astar_cost is not None:
+                st.write(f'**Path cost:** {astar_cost}min')
 
             # Save exploration and best path
             astar_exploration = astar_agent.explored_nodes()
-            astar_best_path = path[0]
+            astar_best_path = astar_path
 
     # Genetic Algorithm tab
     with tab3:
         # Tab header
         st.header('Genetic Algorithm')
+
+        num_drones = st.slider(label='Number of Drones', min_value=1, max_value=10, value=1)
+        mutation_rate = st.slider(label='Mutation Rate %', min_value=0, max_value=100, value=2, step=1)
 
         # Tell user source node
         ga_source = st.text_input(
@@ -164,6 +168,16 @@ def main():
         st.write(f'**Goals:** {st.session_state.goals}')
 
         gen_alg_button = st.button('Perform Genetic Algorithm')
+
+        # Perform Genetic Algorithm
+        if gen_alg_button:
+            drones = ga.Drones('Drones', st.session_state.graph, st.session_state.graph.nodes['Hub'],
+                               [st.session_state.graph.nodes[goal] for goal in st.session_state.goals],
+                               num_drones, mutation_rate/100)
+            paths, cost = drones.genetic_alg()
+            for drone in paths:
+                st.write(f'**Drone {drone.name} Path:** {[node.name for node in drone.locations]} **Cost:** {drone.cost}')
+            st.write(f'**Total Cost:** {cost}')
 
 
     if astar_search_button:
