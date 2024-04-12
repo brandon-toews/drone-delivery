@@ -132,6 +132,7 @@ def main():
         st.header('Genetic Algorithm')
 
         num_drones = st.slider(label='Number of Drones', min_value=1, max_value=10, value=1)
+        crossover_type = st.selectbox('Crossover Type', ['Uniform', 'One-Point', 'Heuristic'], index=0)
         mutation_rate = st.slider(label='Mutation Rate %', min_value=0, max_value=100, value=2, step=1)
 
         # Tell user source node
@@ -173,7 +174,7 @@ def main():
         if gen_alg_button:
             drones = ga.Drones('Drones', st.session_state.graph, st.session_state.graph.nodes['Hub'],
                                [st.session_state.graph.nodes[goal] for goal in st.session_state.goals],
-                               num_drones, mutation_rate/100)
+                               num_drones, crossover_type, mutation_rate/100)
             paths, cost = drones.genetic_alg()
             for drone in paths:
                 st.write(f'**Drone {drone.name} Path:** {[node.name for node in drone.locations]} **Cost:** {drone.cost}')

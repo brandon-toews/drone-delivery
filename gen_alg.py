@@ -13,16 +13,68 @@ def print_drone_paths(individual):
 
 class Drones:
 
-    def __init__(self, name, graph: gp.Graph, initial_state: gp.Node, goals: [gp.Node], num_drones, mutation_rate):
+    def __init__(self, name, graph: gp.Graph, initial_state: gp.Node, goals: [gp.Node], num_drones, crossover_selection, mutation_rate):
+        self.costs = dict()
         self.name = name
         self.state_space = graph
         self.initial_state = initial_state
         self.current_state = self.initial_state
         self.goal_states = goals
+        self.costs[initial_state] = {}
+        self.costs = {goal: {} for goal in self.goal_states}
+        self.goal_cost_range = {}
+        self.calculate_travel_times()
         self.num_drones = num_drones
         self.pop_size = 100
         self.population: [dr.Drone] = []
         self.mutation_rate = mutation_rate
+        self.crossover_type = crossover_selection
+        # Dictionary of heuristic functions
+        self.crossover_function = {
+            'Uniform': self.uniform_crossover,
+            'One-Point': self.one_point_crossover,
+            'Heuristic': self.heuristic_crossover
+        }
+
+    # Method to calculate the travel times and paths between all goal states
+    # and store them in a dictionary for future reference
+    def calculate_travel_times(self):
+        hub_to_goals = {}
+        # Iterate through all goal states
+        for goal in self.goal_states:
+            # Create A* agent for the initial state and goal
+            astar_agent = ar.Agent('A*',
+                                   self.state_space,
+                                   self.initial_state,
+                                   goal,
+                                   'Euclidean + Traffic Aware')
+            # Perform A* search of the initial state and goal
+            path, travel_time = astar_agent.astar_search()
+            # Add the travel time to the costs dictionary
+            hub_to_goals[goal] = (path, travel_time)
+            # Iterate through all other goal states
+            for other_goal in self.goal_states:
+                # If the goal is not the same as the other goal
+                if not goal == other_goal:
+                    # Create A* agent for the goal and other goal
+                    astar_agent = ar.Agent('A*',
+                                           self.state_space,
+                                           goal,
+                                           other_goal,
+                                           'Euclidean + Traffic Aware')
+                    # Perform A* search of the goal and other goal
+                    path, travel_time = astar_agent.astar_search()
+                    # Add the travel time to the costs dictionary
+                    self.costs[goal][other_goal] = (path, travel_time)
+
+        # Add the travel times from the hub to the goals to the costs dictionary
+        self.costs[self.initial_state] = hub_to_goals
+
+        for key in self.costs:
+            max_time = max(self.costs[key][key2][1] for key2 in self.costs[key])
+            min_time = min(self.costs[key][key2][1] for key2 in self.costs[key])
+            self.goal_cost_range[key] = (min_time, max_time)
+
 
     # Method to create the initial population
     def create_population(self):
@@ -52,40 +104,58 @@ class Drones:
     def fitness_function(self, individual):
         total_time = 0
         total_utility_cost = 0
-        self.current_state = self.initial_state
+        #max_locations = max(len(drone.locations) for drone in individual)
+        #min_locations = min(len(drone.locations) for drone in individual)
+        #balance_penalty = max_locations - min_locations
+        #self.current_state = self.initial_state
         for drone in individual:
             cumulative_time = 0
             cumulative_utility_cost = 0
             #print(len(drone.locations))
-            if len(drone.locations):
-                for i in range(len(drone.locations)-1):
+            if len(drone.locations) > 1:
+                for i in range(len(drone.locations)):
                     #print(drone.locations[i].name, drone.locations[i+1].name)
-                    # Create A* agent
-                    astar_agent = ar.Agent('A*',
-                                           self.state_space,
-                                           self.current_state,
-                                           drone.locations[i],
-                                           'Euclidean + Traffic Aware')
-                    # Perform A* search of first goal
-                    path, travel_time = astar_agent.astar_search()
+                    travel_time = self.costs[self.current_state][drone.locations[i]][1]
+                    #print(self.current_state.name, drone.locations[i].name, travel_time)
                     # Add travel time to cumulative time
                     cumulative_time += travel_time
+                    #print(f'Cumulative Time: {cumulative_time}')
                     # Calculate utility cost for first goal based on travel time and delivery urgency
                     utility_cost = cumulative_time * drone.locations[i].delivery_urgency/10
+                    #print(f'Utility Cost: {utility_cost}')
                     # Add utility cost to cumulative utility cost
                     cumulative_utility_cost += utility_cost
+                    #print(f'Cumulative Utility Cost: {cumulative_utility_cost}')
                     # Update current state to goal
                     self.current_state = drone.locations[i]
+            elif len(drone.locations) == 1:
+                # Perform A* search of first goal
+                travel_time = self.costs[self.current_state][drone.locations[0]][1]
+                #print(self.current_state.name, drone.locations[0].name, travel_time)
+                # Add travel time to cumulative time
+                cumulative_time += travel_time
+                #print(f'Cumulative Time: {cumulative_time}')
+                # Calculate utility cost for first goal based on travel time and delivery urgency
+                utility_cost = cumulative_time * drone.locations[0].delivery_urgency/10
+                #print(f'Utility Cost: {utility_cost}')
+                # Add utility cost to cumulative utility cost
+                cumulative_utility_cost += utility_cost
+                #print(f'Cumulative Utility Cost: {cumulative_utility_cost}')
+                # Update current state to goal
+                self.current_state = drone.locations[0]
 
             # Store the total cost of the drone
             drone.cost = cumulative_time + cumulative_utility_cost
+            #print(f'Drone {drone.name} Cost: {drone.cost}')
             # Add cumulative time and cumulative utility cost to total time and total utility cost
             total_time += cumulative_time
+            # Update total utility cost
             total_utility_cost += cumulative_utility_cost
+            # Update current state to initial state
             self.current_state = self.initial_state
 
         # Return the fitness of the individual
-        return total_time + total_utility_cost
+        return total_time + total_utility_cost # * balance_penalty
 
     # Method to breed individuals
     def breed(self, parents):
@@ -97,13 +167,13 @@ class Drones:
             parent1 = parents[i]
             parent2 = parents[i + 1]
             # Perform crossover
-            child1, child2 = self.crossover(parent1, parent2)
+            child1, child2 = self.crossover_function[self.crossover_type](parent1, parent2)
             # Add children to the list of children
             children.append(child1)
             children.append(child2)
 
         # Perform crossover on the last parent and the first parent
-        child1, child2 = self.crossover(parents[0], parents[-1])
+        child1, child2 = self.crossover_function[self.crossover_type](parents[0], parents[-1])
 
         # Add last two children to the list of children
         children.append(child1)
@@ -111,90 +181,221 @@ class Drones:
 
         return children
 
-    # Method to perform crossover
-    def crossover(self, parent1, parent2):
-        # Get the length of the parents
-        len_parent = len(parent1)
-        # Create a list to store crossover points
-        crossover_points_drone = []
-        # Select a random index for crossover at the drone level
-        while not crossover_points_drone:
-            # Iterate through the drones
-            for i in range(0, len(parent1)):
-                # 50% chance to include the drone
-                if random.random() < 0.5:
-                    # Add the drone index to the list of crossover points
-                    crossover_points_drone.append(i)
-
+    # Method to perform uniform crossover
+    def uniform_crossover(self, parent1, parent2):
         # Create children
-        child1 = [dr.Drone(i) for i in range(len_parent)]
-        child2 = [dr.Drone(i) for i in range(len_parent)]
-        '''# Add drones that are not in the crossover points to the children as is
-        for drone in [i for i in range(len_parent) if i not in crossover_points_drone]:
-            child1[drone] = parent1[drone]
-            child2[drone] = parent2[drone]'''
+        child1 = [dr.Drone(i) for i in range(self.num_drones)]
+        child1_assigned_goals = set()
+        child2 = [dr.Drone(i) for i in range(self.num_drones)]
+        child2_assigned_goals = set()
 
-        # Perform crossover at the node level on the drones in the drone crossover points
-        for drone in crossover_points_drone:
-            parent1_len_drone = len(parent1[drone].locations)
-            parent2_len_drone = len(parent2[drone].locations)
-
-            # Get the length of the drone's locations
-            len_drone = 0
-
-            # Select the length with the least locations
-            if parent1_len_drone < parent2_len_drone:
-                len_drone = parent1_len_drone
-            else:
-                len_drone = parent2_len_drone
-
-            if len_drone > 1:
-                # Select a random index for crossover at the node level
-                crossover_point_node = random.randint(0, len_drone - 1)
-            else:
-                crossover_point_node = 0
-
-            child1[drone] = dr.Drone(drone)
-            child2[drone] = dr.Drone(drone)
-
-            # Fill the first part of the crossover
-            for i in range(crossover_point_node):
-                child1[drone].locations.append(parent1[drone].locations[i])
-                child2[drone].locations.append(parent2[drone].locations[i])
-
-            # Fill the second part of the crossover for child1
-            # only up to the length drone that is contributing its locations in parent2
-            for i in range(crossover_point_node, parent2_len_drone):
-                if parent2[drone].locations[i] not in [loc for d in child1 for loc in d.locations]:
-                    child1[drone].locations.append(parent2[drone].locations[i])
-
-            # Fill the second part of the crossover for child2
-            # only up to the length drone that is contributing its locations in parent1
-            for i in range(crossover_point_node, parent1_len_drone):
-                if parent1[drone].locations[i] not in [loc for d in child2 for loc in d.locations]:
-                    child2[drone].locations.append(parent1[drone].locations[i])
-
-        for drone in range(len(parent2)):
-            for goal in parent2[drone].locations:
-                if goal not in [loc for d in child1 for loc in d.locations]:
-                    child1[drone].locations.append(goal)
-
-        for drone in range(len(parent1)):
+        for drone in range(self.num_drones):
             for goal in parent1[drone].locations:
-                if goal not in [loc for d in child2 for loc in d.locations]:
+                if random.random() < 0.5 and goal not in child1_assigned_goals:
+                    child1[drone].locations.append(goal)
+                    child1_assigned_goals.add(goal)
+                elif goal not in child2_assigned_goals:
                     child2[drone].locations.append(goal)
+                    child2_assigned_goals.add(goal)
 
-        print_drone_paths(child1)
-        print_drone_paths(child2)
+            for goal in parent2[drone].locations:
+                if random.random() < 0.5 and goal not in child2_assigned_goals:
+                    child2[drone].locations.append(goal)
+                    child2_assigned_goals.add(goal)
+                elif goal not in child1_assigned_goals:
+                    child1[drone].locations.append(goal)
+                    child1_assigned_goals.add(goal)
+
+        for goal in self.goal_states:
+            if goal not in child1_assigned_goals:
+                drone = random.randint(0, self.num_drones - 1)
+                child1[drone].locations.append(goal)
+                child1_assigned_goals.add(goal)
+
+        for goal in self.goal_states:
+            if goal not in child2_assigned_goals:
+                drone = random.randint(0, self.num_drones - 1)
+                child2[drone].locations.append(goal)
+                child2_assigned_goals.add(goal)
 
         return self.mutate(child1), self.mutate(child2)
+
+    # Method to perform one point crossover
+    def one_point_crossover(self, parent1, parent2):
+        '''print('Parent 1')
+        print_drone_paths(parent1)
+        print('Parent 2')
+        print_drone_paths(parent2)'''
+
+        # Create children
+        child1 = [dr.Drone(i) for i in range(self.num_drones)]
+        child1_assigned_goals = set()
+        child2 = [dr.Drone(i) for i in range(self.num_drones)]
+        child2_assigned_goals = set()
+
+        if self.num_drones > 1:
+            if self.num_drones == 2:
+                crossover_point = 1
+            else:
+                crossover_point = random.randint(1, self.num_drones - 1)
+
+            for drone in range(self.num_drones):
+                if drone < crossover_point:
+                    for goal in parent1[drone].locations:
+                        if goal not in child1_assigned_goals:
+                            child1[drone].locations.append(goal)
+                            child1_assigned_goals.add(goal)
+                    for goal in parent2[drone].locations:
+                        if goal not in child2_assigned_goals:
+                            child2[drone].locations.append(goal)
+                            child2_assigned_goals.add(goal)
+                else:
+                    for goal in parent2[drone].locations:
+                        if goal not in child1_assigned_goals:
+                            child1[drone].locations.append(goal)
+                            child1_assigned_goals.add(goal)
+                    for goal in parent1[drone].locations:
+                        if goal not in child2_assigned_goals:
+                            child2[drone].locations.append(goal)
+                            child2_assigned_goals.add(goal)
+
+            for goal in self.goal_states:
+                if goal not in child1_assigned_goals:
+                    drone = random.randint(0, self.num_drones - 1)
+                    child1[drone].locations.append(goal)
+                    child1_assigned_goals.add(goal)
+
+            for goal in self.goal_states:
+                if goal not in child2_assigned_goals:
+                    drone = random.randint(0, self.num_drones - 1)
+                    child2[drone].locations.append(goal)
+                    child2_assigned_goals.add(goal)
+
+            '''print('Child 1')
+            print_drone_paths(child1)
+            print('Child 2')
+            print_drone_paths(child2)'''
+
+
+        return self.mutate(child1), self.mutate(child2)
+
+    # Method to perform heuristic crossover
+    def heuristic_crossover(self, parent1, parent2):
+        # Create children
+        child1 = [dr.Drone(i) for i in range(self.num_drones)]
+        child1_assigned_goals = set()
+        child2 = [dr.Drone(i) for i in range(self.num_drones)]
+        child2_assigned_goals = set()
+
+        for drone in range(self.num_drones):
+            for i in range(len(parent1[drone].locations)):
+                if parent1[drone].locations[i] not in child1_assigned_goals:
+                    end = len(child1[drone].locations) - 1
+                    if end < 0:
+                        child1[drone].locations.append(parent1[drone].locations[i])
+                        child1_assigned_goals.add(parent1[drone].locations[i])
+                    else:
+                        #end = len(child2[drone].locations)-1
+                        #if self.is_high_quality(parent1[drone].locations[i], child1[drone].locations[end]):
+                        if random.random() < self.is_high_quality(parent1[drone].locations[i], child1[drone].locations[end]):
+                            child1[drone].locations.append(parent1[drone].locations[i])
+                            child1_assigned_goals.add(parent1[drone].locations[i])
+                        elif parent1[drone].locations[i] not in child2_assigned_goals:
+                            child2[drone].locations.append(parent1[drone].locations[i])
+                            child2_assigned_goals.add(parent1[drone].locations[i])
+
+            for i in range(len(parent2[drone].locations)):
+                if parent2[drone].locations[i] not in child2_assigned_goals:
+                    end = len(child2[drone].locations)-1
+                    if end < 0:
+                        child2[drone].locations.append(parent2[drone].locations[i])
+                        child2_assigned_goals.add(parent2[drone].locations[i])
+                    else:
+                        #if self.is_high_quality(parent2[drone].locations[i], child2[drone].locations[end]):
+                        if random.random() < self.is_high_quality(parent2[drone].locations[i], child2[drone].locations[end]):
+                            child2[drone].locations.append(parent2[drone].locations[i])
+                            child2_assigned_goals.add(parent2[drone].locations[i])
+                        elif parent2[drone].locations[i] not in child1_assigned_goals:
+                            child1[drone].locations.append(parent2[drone].locations[i])
+                            child1_assigned_goals.add(parent2[drone].locations[i])
+
+        for goal in self.goal_states:
+            if goal not in child1_assigned_goals:
+                drone = random.randint(0, self.num_drones - 1)
+                child1[drone].locations.append(goal)
+                child1_assigned_goals.add(goal)
+
+        for goal in self.goal_states:
+            if goal not in child2_assigned_goals:
+                drone = random.randint(0, self.num_drones - 1)
+                child2[drone].locations.append(goal)
+                child2_assigned_goals.add(goal)
+
+        return self.mutate(child1), self.mutate(child2)
+
+    def is_high_quality(self, goal1, goal2):
+        #print(goal1.name, goal2.name)
+        cost = self.costs[goal1][goal2][1]
+        min_cost, max_cost = self.goal_cost_range[goal1]
+        where = (cost - min_cost) / (max_cost - min_cost)
+        return 1-where
+
+    # Method to mutate individuals
+    def new_mutate(self, individual):
+        # 2% chance to mutate
+        if random.random() < self.mutation_rate:
+            for _ in range(2):
+                # Select the drone with the most locations
+                drone_most = max(individual, key=lambda drone: len(drone.locations))
+                # Select the drone with the least locations
+                drone_least = min(individual, key=lambda drone: len(drone.locations))
+                # Select a random goal from the drone with the most locations
+                goal = random.randint(0, len(drone_most.locations) - 1)
+                # Remove the goal from the drone with the most locations
+                location = drone_most.locations.pop(goal)
+                # Add the goal to the drone with the least locations
+                drone_least.locations.append(location)
+
+        return individual
 
     # Method to mutate individuals
     def mutate(self, individual):
         # 2% chance to mutate
         if random.random() < self.mutation_rate:
+            for _ in range(2):
+                # Select a random drone
+                drone = random.randint(0, len(individual)-1)
+                # Ensure that the drone has goals
+                while len(individual[drone].locations) == 0:
+                    # Select a random drone
+                    drone = random.randint(0, len(individual)-1)
+
+                # If the drone has only one goal
+                if len(individual[drone].locations) == 1:
+                    # Select the only goal
+                    goal = 0
+                # If the drone has more than one goal
+                else:
+                    # Select a random goal
+                    goal = random.randint(0, len(individual[drone].locations)-1)
+
+                # Remove the goal from the drone
+                location = individual[drone].locations.pop(goal)
+                # Select drones with no goals
+                empty_drones = [d for d in individual if len(d.locations) == 0]
+
+                # If there are drones with no goals
+                if empty_drones:
+                    # Select a random drone with no goals
+                    drone = random.choice(empty_drones)
+                    # Add the goal to the drone
+                    drone.locations.append(location)
+                # If there are no drones with no goals
+                else:
+                    # Select a random drone to add the goal to
+                    individual[random.randint(0, len(individual)-1)].locations.append(location)
             # Swap goals
-            individual = self.swap_goals(individual)
+            #individual = self.swap_goals(individual)
 
         return individual
 
