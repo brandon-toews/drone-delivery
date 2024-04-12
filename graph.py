@@ -129,11 +129,11 @@ class Graph:
                     next_closest_node.neighbors[node] = [next_closest_distance, traffic, travel_cost]
 
     # Function to plot graph with or without selected nodes
-    def plot_graph(self, selected_node_names=None, astar_exploration=None, astar_path=None):
+    def plot_graph(self, selected_node_names=None, astar_exploration=None, astar_path=None, drones=None):
         f = plt.figure(figsize=(11, 10))
 
         # Traffic color dictionary
-        colors = {1: "green", 2: "limegreen", 3: "gold",
+        traffic_colors = {1: "green", 2: "limegreen", 3: "gold",
                   4: "darkorange", 5: "red"}
 
         # Urgency color dictionary
@@ -179,7 +179,7 @@ class Graph:
                     [node.pos[0], neighbor.pos[0]],
                     [node.pos[1], neighbor.pos[1]],
                     # Set color of line based on traffic level
-                    color=colors[node.neighbors[neighbor][1]],
+                    color=traffic_colors[node.neighbors[neighbor][1]],
                     # Set line width
                     linewidth=4)
 
@@ -228,9 +228,40 @@ class Graph:
                          color='white', weight='semibold')
                 plt.text(node.pos[0]-5.0, node.pos[1]-5.0, '1', ha='center', va='center',
                          color='black', weight='semibold')'''
+            # Plot drone paths if drones are passed
+            if drones is not None:
+                # Create a color map
+                drone_colors = plt.cm.get_cmap('rainbow', len(drones))
+
+                # Loop through drones
+                for i, drone in enumerate(drones):
+                    # Get the color for this drone
+                    drone_color = drone_colors(i)
+
+                    # Loop through each node in drone path and draw the path between nodes
+                    for j in range(len(drone.path) - 1):
+                        print(drone.path[j].name, drone.path[j + 1].name)
+                        # Get the current node and the next node
+                        current_node = drone.path[j]
+                        next_node = drone.path[j + 1]
+
+                        # Calculate the interpolated position
+                        ratio = 0.9  # Adjust this value to change where the arrow ends
+                        interp_pos = (ratio * next_node.pos[0] + (1 - ratio) * current_node.pos[0],
+                                      ratio * next_node.pos[1] + (1 - ratio) * current_node.pos[1])
+
+                        # Offset for the arrow
+                        offset = 4
+
+                        # Show the direction of travel from node to node
+                        plt.annotate("",
+                                     xy=(interp_pos[0] + offset, interp_pos[1] + offset),
+                                     xytext=(current_node.pos[0] + offset, current_node.pos[1] + offset),
+                                     arrowprops=dict(arrowstyle="->", color=drone_color,
+                                                     linewidth=4))  # Increase the linewidth value to make the arrow line thicker
 
         # Produce patches for plot legend from traffic colors dict
-        traffic_patches = [mpatches.Patch(color=colors[key], label=key) for key in colors]
+        traffic_patches = [mpatches.Patch(color=traffic_colors[key], label=key) for key in traffic_colors]
 
         # Produce patches for plot legend from urgency colors dict
         urgency_patches = [mpatches.Patch(color=urgencies[key], label=key if key != 0 else 'None') for key in urgencies]

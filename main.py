@@ -19,6 +19,7 @@ def main():
     goal = None
     astar_exploration = None
     astar_best_path = None
+    ga_paths = None
 
     # Initialize GA variables
     #goals = []
@@ -175,10 +176,11 @@ def main():
             drones = ga.Drones('Drones', st.session_state.graph, st.session_state.graph.nodes['Hub'],
                                [st.session_state.graph.nodes[goal] for goal in st.session_state.goals],
                                num_drones, crossover_type, mutation_rate/100)
-            paths, cost = drones.genetic_alg()
-            for drone in paths:
+            ga_paths, cost = drones.genetic_alg()
+            for drone in ga_paths:
                 st.write(f'**Drone {drone.name} Path:** {[node.name for node in drone.locations]} **Cost:** {drone.cost}')
             st.write(f'**Total Cost:** {cost}')
+
 
 
     if astar_search_button:
@@ -189,7 +191,7 @@ def main():
         st.pyplot(plot)
     elif generate_goals_button or gen_alg_button:
         # Generate plot from graph
-        plot = st.session_state.graph.plot_graph(st.session_state.goals)
+        plot = st.session_state.graph.plot_graph(st.session_state.goals, None, None, ga_paths)
 
         # Display plot on streamlit
         st.pyplot(plot)

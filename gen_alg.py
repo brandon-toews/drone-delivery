@@ -116,6 +116,8 @@ class Drones:
                 for i in range(len(drone.locations)):
                     #print(drone.locations[i].name, drone.locations[i+1].name)
                     travel_time = self.costs[self.current_state][drone.locations[i]][1]
+                    for node in self.costs[self.current_state][drone.locations[i]][0]:
+                        drone.path.append(node)
                     #print(self.current_state.name, drone.locations[i].name, travel_time)
                     # Add travel time to cumulative time
                     cumulative_time += travel_time

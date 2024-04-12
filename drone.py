@@ -7,5 +7,6 @@ class Drone:
         self.name = name
         self.locations: [gp.Node] = []
         self.cost = 0
+        self.path = []
 
 
