@@ -154,6 +154,47 @@ class Graph:
                             # Set line width
                             linewidth=15)
 
+        # Plot drone paths if drones are passed
+        if drones is not None:
+            # Create a color map
+            drone_colors = plt.cm.get_cmap('rainbow', len(drones))
+
+            # Create a list to store the patches for the legend
+            drone_patches = []
+
+            # Loop through drones
+            for i, drone in enumerate(drones):
+                #print(f'drone: {i}')
+                # Get the color for this drone
+                drone_color = drone_colors(i)
+
+                # Create a patch for this drone and add it to the list
+                drone_patches.append(mpatches.Patch(color=drone_color, label=f'Drone {i}'))
+
+                # Loop through each node in drone path and draw the path between nodes
+                for j in range(len(drone.path) - 1):
+                    # print(drone.path[j].name, drone.path[j + 1].name)
+                    # Get the current node and the next node
+                    current_node = drone.path[j]
+                    next_node = drone.path[j + 1]
+
+                    # Calculate the interpolated position
+                    ratio = 0.8#0.25+(i*0.09)  # Adjust this value to change where the arrow ends
+                    interp_pos = (ratio * next_node.pos[0] + (1 - ratio) * current_node.pos[0],
+                                  ratio * next_node.pos[1] + (1 - ratio) * current_node.pos[1])
+
+                    # Offset for the arrow
+                    offset = i * 1.5
+
+                    # Show the direction of travel from node to node
+                    plt.annotate("",
+                                 xy=(interp_pos[0] + offset, interp_pos[1] + offset),
+                                 xytext=(current_node.pos[0] + offset, current_node.pos[1] + offset),
+                                 arrowprops=dict(arrowstyle="->", color=drone_color,
+                                                 linewidth=5))
+                # Plot drone legend
+                f.legend(handles=drone_patches, title="Drones", bbox_to_anchor=(0.9, 0.5), loc='upper left')
+
         # Plot connection to path nodes
         if astar_path is not None:
             for i in range(len(astar_path) - 1):
@@ -228,37 +269,6 @@ class Graph:
                          color='white', weight='semibold')
                 plt.text(node.pos[0]-5.0, node.pos[1]-5.0, '1', ha='center', va='center',
                          color='black', weight='semibold')'''
-            # Plot drone paths if drones are passed
-            if drones is not None:
-                # Create a color map
-                drone_colors = plt.cm.get_cmap('rainbow', len(drones))
-
-                # Loop through drones
-                for i, drone in enumerate(drones):
-                    # Get the color for this drone
-                    drone_color = drone_colors(i)
-
-                    # Loop through each node in drone path and draw the path between nodes
-                    for j in range(len(drone.path) - 1):
-                        print(drone.path[j].name, drone.path[j + 1].name)
-                        # Get the current node and the next node
-                        current_node = drone.path[j]
-                        next_node = drone.path[j + 1]
-
-                        # Calculate the interpolated position
-                        ratio = 0.9  # Adjust this value to change where the arrow ends
-                        interp_pos = (ratio * next_node.pos[0] + (1 - ratio) * current_node.pos[0],
-                                      ratio * next_node.pos[1] + (1 - ratio) * current_node.pos[1])
-
-                        # Offset for the arrow
-                        offset = 4
-
-                        # Show the direction of travel from node to node
-                        plt.annotate("",
-                                     xy=(interp_pos[0] + offset, interp_pos[1] + offset),
-                                     xytext=(current_node.pos[0] + offset, current_node.pos[1] + offset),
-                                     arrowprops=dict(arrowstyle="->", color=drone_color,
-                                                     linewidth=4))  # Increase the linewidth value to make the arrow line thicker
 
         # Produce patches for plot legend from traffic colors dict
         traffic_patches = [mpatches.Patch(color=traffic_colors[key], label=key) for key in traffic_colors]

@@ -9,6 +9,7 @@ import a_star as ar
 def print_drone_paths(individual):
     for drone in individual:
         print(f'Drone {drone.name} Path: {[node.name for node in drone.locations]}')
+        print(f'Drone {drone.name} Path: {[node.name for node in drone.path]}')
 
 
 class Drones:
@@ -109,6 +110,7 @@ class Drones:
         #balance_penalty = max_locations - min_locations
         #self.current_state = self.initial_state
         for drone in individual:
+            drone.path = []
             cumulative_time = 0
             cumulative_utility_cost = 0
             #print(len(drone.locations))
@@ -116,8 +118,17 @@ class Drones:
                 for i in range(len(drone.locations)):
                     #print(drone.locations[i].name, drone.locations[i+1].name)
                     travel_time = self.costs[self.current_state][drone.locations[i]][1]
-                    for node in self.costs[self.current_state][drone.locations[i]][0]:
-                        drone.path.append(node)
+                    paths = self.costs[self.current_state][drone.locations[i]][0]
+                    for n in range(len(paths)):
+                        if i == len(drone.locations)-1:
+                            #print(f'Add: {paths[n].name}')
+                            drone.path.append(paths[n])
+                        elif n < len(paths)-1:
+                            #print(f'Add: {paths[n].name}')
+                            drone.path.append(paths[n])
+                    #if not i < len(drone.locations)-1:
+                    #    rem_node = drone.path.pop()
+                    #  print(f'Pop: {rem_node.name}')
                     #print(self.current_state.name, drone.locations[i].name, travel_time)
                     # Add travel time to cumulative time
                     cumulative_time += travel_time
@@ -134,6 +145,10 @@ class Drones:
                 # Perform A* search of first goal
                 travel_time = self.costs[self.current_state][drone.locations[0]][1]
                 #print(self.current_state.name, drone.locations[0].name, travel_time)
+                for node in self.costs[self.current_state][drone.locations[0]][0]:
+                    print(node.name)
+                    drone.path.append(node)
+
                 # Add travel time to cumulative time
                 cumulative_time += travel_time
                 #print(f'Cumulative Time: {cumulative_time}')
@@ -272,6 +287,35 @@ class Drones:
                     drone = random.randint(0, self.num_drones - 1)
                     child2[drone].locations.append(goal)
                     child2_assigned_goals.add(goal)
+        else:
+            crossover_point = random.randint(1, len(parent1[0].locations) - 1)
+
+            for goal in range(len(parent1[0].locations)-2):
+                if goal < crossover_point:
+                    if parent1[0].locations[goal] not in child1_assigned_goals:
+                        child1[0].locations.append(parent1[0].locations[goal])
+                        child1_assigned_goals.add(parent1[0].locations[goal])
+                    if parent2[0].locations[goal] not in child2_assigned_goals:
+                        child2[0].locations.append(parent2[0].locations[goal])
+                        child2_assigned_goals.add(parent2[0].locations[goal])
+                else:
+                    if parent2[0].locations[goal] not in child1_assigned_goals:
+                        child1[0].locations.append(parent2[0].locations[goal])
+                        child1_assigned_goals.add(parent2[0].locations[goal])
+                    if parent1[0].locations[goal] not in child2_assigned_goals:
+                        child2[0].locations.append(parent1[0].locations[goal])
+                        child2_assigned_goals.add(parent1[0].locations[goal])
+
+            for goal in random.sample(self.goal_states, len(self.goal_states)):
+                if goal not in child1_assigned_goals:
+                    child1[0].locations.append(goal)
+                    child1_assigned_goals.add(goal)
+
+            for goal in random.sample(self.goal_states, len(self.goal_states)):
+                if goal not in child2_assigned_goals:
+                    child2[0].locations.append(goal)
+                    child2_assigned_goals.add(goal)
+
 
             '''print('Child 1')
             print_drone_paths(child1)
