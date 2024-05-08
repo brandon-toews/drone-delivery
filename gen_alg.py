@@ -338,8 +338,9 @@ class Drones:
                 if parent1[drone].locations[i] not in child1_assigned_goals:
                     end = len(child1[drone].locations) - 1
                     if end < 0:
-                        child1[drone].locations.append(parent1[drone].locations[i])
-                        child1_assigned_goals.add(parent1[drone].locations[i])
+                        if random.random() < self.is_high_quality(self.initial_state, parent1[drone].locations[i]):
+                            child1[drone].locations.append(parent1[drone].locations[i])
+                            child1_assigned_goals.add(parent1[drone].locations[i])
                     else:
                         #end = len(child2[drone].locations)-1
                         #if self.is_high_quality(parent1[drone].locations[i], child1[drone].locations[end]):
