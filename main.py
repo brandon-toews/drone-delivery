@@ -1,13 +1,12 @@
 import random
-
 import graph as gp
 import streamlit as st
 import a_star as ar
 import gen_alg as ga
-import pandas as pd
 import numpy as np
 
 
+# Main function
 def main():
     # Create UI sidebar
     sidebar = st.sidebar
@@ -19,11 +18,11 @@ def main():
     goal = None
     astar_exploration = None
     astar_best_path = None
+
+    # Initialize Genetic Algorithm variables
     ga_paths = None
 
-    # Initialize GA variables
-    #goals = []
-
+    # Sidebar header
     with sidebar:
         
         # Graph tab
@@ -48,6 +47,7 @@ def main():
         'num_nodes' not in st.session_state or st.session_state.num_nodes != num_nodes
     )
 
+    # Check if the create graph button was pressed or if the graph is not in the session state
     if create_graph_button or 'graph' not in st.session_state or sliders_changed:
 
         # Create graph
@@ -59,13 +59,17 @@ def main():
         st.session_state.graph_height = graph_height
         st.session_state.num_nodes = num_nodes
 
+    # Check if the A* goal has changed
     goal_change = 'goal' not in st.session_state or st.session_state.goal != goal
 
+    # If the A* goal has changed, update the goal in the session state
     if goal_change:
         st.session_state.goal = goal
 
-    goals_change = 'goals' not in st.session_state #or st.session_state.goals != goals
+    # Check if the genetic algorithm goals have changed
+    goals_change = 'goals' not in st.session_state  # or st.session_state.goals != goals
 
+    # If the genetic algorithm goals have changed, update the goals in the session state
     if goals_change:
         st.session_state.goals = []
 
@@ -81,6 +85,7 @@ def main():
             placeholder='Hub',
         )
 
+        # Select destination node
         if 'graph' in st.session_state:
             goal = st.selectbox(label='Select destination node:',
                                 options=[key for key in st.session_state.graph.nodes if not key == 'Hub'])
@@ -96,16 +101,21 @@ def main():
             placeholder=astar_euc_dist,
         )
 
-        # Heuristic type
+        # Select heuristic type
         heuristic_type = st.selectbox('Heuristic Type', ['None', 'Euclidean', 'Euclidean + Traffic Aware'], index=2)
 
+        # Perform A* search button
         astar_search_button = st.button('Perform A* Search')
 
-        # Perform A* search
+        # If the A* search button is pressed and the graph and goal are in the session state
         if astar_search_button and 'graph' in st.session_state and goal is not None:
+            # Reset delivery urgency of all nodes to 0 if genetic algorithm was previously run
             for key in st.session_state.goals:
                 st.session_state.graph.nodes[key].delivery_urgency = 0
+
+            # Reset goals if genetic algorithm was previously run
             st.session_state.goals = []
+            # Save goal in session state
             st.session_state.goal = goal
             # Create agent object
             astar_agent = ar.Agent('A*',
@@ -132,12 +142,15 @@ def main():
         # Tab header
         st.header('Genetic Algorithm')
 
+        # Number of drones slider
         num_drones = st.slider(label='Number of Drones', min_value=1, max_value=10, value=1)
+        # Crossover type select box
         crossover_type = st.selectbox('Crossover Type', ['Uniform', 'One-Point', 'Heuristic'], index=0)
+        # Mutation rate slider
         mutation_rate = st.slider(label='Mutation Rate %', min_value=0, max_value=100, value=2, step=1)
 
         # Tell user source node
-        ga_source = st.text_input(
+        st.text_input(
             "Source:",
             disabled=True,
             placeholder='Hub',
@@ -149,46 +162,44 @@ def main():
         # randomly select 10 nodes as goals
         if generate_goals_button:
             random_goals = np.random.choice([key for key in st.session_state.graph.nodes if not key == 'Hub'], 10,
-                                     replace=False)
+                                            replace=False)
             random_goals = list(random_goals)
             st.session_state.goals = list(random_goals)
             for key in st.session_state.goals:
                 st.session_state.graph.nodes[key].delivery_urgency = random.randint(1, 5)
 
-        # Select destination node to add to goals
-        #add_goal = st.selectbox(label='Add destination node:',
-        #                        options=[key for key in st.session_state.graph.nodes
-        #                                 if not key == 'Hub' and key not in st.session_state.goals])
-        # Add selected destination node
-        #add_goal_button = st.button('Add destination node')
-
-        # Add destination node to goals
-        #if add_goal_button:
-        #    st.session_state.goals.append(add_goal)
-
         # Display goals on streamlit
         st.write(f'**Goals:** {st.session_state.goals}')
 
+        # Perform Genetic Algorithm button
         gen_alg_button = st.button('Perform Genetic Algorithm')
 
-        # Perform Genetic Algorithm
+        # If the Genetic Algorithm button is pressed and the graph and goals are in the session state
         if gen_alg_button:
+            # Create drones object
             drones = ga.Drones('Drones', st.session_state.graph, st.session_state.graph.nodes['Hub'],
                                [st.session_state.graph.nodes[goal] for goal in st.session_state.goals],
                                num_drones, crossover_type, mutation_rate/100)
+            # Perform Genetic Algorithm
             ga_paths, cost = drones.genetic_alg()
+            # Display drone paths on streamlit
             for drone in ga_paths:
-                st.write(f'**Drone {drone.name} Path:** {[node.name for node in drone.locations]} **Cost:** {drone.cost}')
+                st.write(f'**Drone {drone.name} '
+                         f'Path:** {[node.name for node in drone.locations]} '
+                         f'**Cost:** {drone.cost}')
+
+            # Display total cost on streamlit
             st.write(f'**Total Cost:** {cost}')
 
-
-
+    # If A* search button is pressed, generate plot from graph with exploration and best path
     if astar_search_button:
         # Generate plot from graph
         plot = st.session_state.graph.plot_graph(st.session_state.goal, astar_exploration, astar_best_path)
 
         # Display plot on streamlit
         st.pyplot(plot)
+
+    # If Genetic Algorithm button is pressed, generate plot from graph with drone paths
     elif generate_goals_button or gen_alg_button:
         # Generate plot from graph
         plot = st.session_state.graph.plot_graph(st.session_state.goals, None, None, ga_paths)
@@ -196,6 +207,7 @@ def main():
         # Display plot on streamlit
         st.pyplot(plot)
 
+    # If neither A* search button nor Genetic Algorithm button is pressed, generate plot from graph
     else:
         # Generate plot from graph
         plot = st.session_state.graph.plot_graph()
@@ -204,7 +216,6 @@ def main():
         st.pyplot(plot)
 
 
-
-
+# Run main function
 if __name__ == '__main__':
     main()

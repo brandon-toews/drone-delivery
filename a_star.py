@@ -1,16 +1,17 @@
 import graph as gp
 
 
-# Drone class
+# Define Agent class
 class Agent:
+    # Initialize Agent object
     def __init__(self, name, graph: gp.Graph, initial_state: gp.Node, goal_state: gp.Node, heuristic_type):
+        # Set attributes
         self.name = name
         self.state_space = graph
         self.initial_state = initial_state
         self.goal_state = goal_state
         self.current_state = self.initial_state
         self.heuristic_type = heuristic_type
-        # self.path.append(self.current_state)
         self.fringe_nodes = {}
         self.closed_nodes = {}
         self.predecessors = {}
@@ -51,6 +52,7 @@ class Agent:
         }
 
         # Select the appropriate heuristic function based on the heuristic_type attribute
+        # Essentially, this is a switch statement
         heuristic_function = heuristic_functions.get(self.heuristic_type, euclidean)
 
         # Call the selected heuristic function
@@ -94,20 +96,30 @@ class Agent:
 
     # Method to get the best path from initial state to goal state
     def get_best_path(self):
+        # Initialize path list
         path = []
+        # Initialize node as goal state
         node = self.goal_state
+        # Loop until node is initial state
         while node != self.initial_state:
+            # Append node to path
             path.append(node)
+            # Update node to predecessor of node
             node = self.predecessors[node][0]
+        # Append initial state to path
         path.append(self.initial_state)
+        # Return path in reverse order and cost of best path
         return path[::-1], self.predecessors[self.goal_state][1]
 
     # Method to perform A* search
     def astar_search(self):
         # Loop until goal state is reached
         while self.current_state != self.goal_state:
+            # Check if fringe nodes is empty
             if not self.fringe_nodes:
+                # Return None, None if goal state is not reached
                 return None, None
+            # If fringe nodes is not empty
             else:
                 # Get node with the lowest total cost from fringe nodes
                 min_f_cost = min(self.fringe_nodes.keys())
@@ -122,19 +134,10 @@ class Agent:
                 # If node is not in closed nodes
                 else:
                     self.expand_node(min_f_cost)
-
+        # Return best path
         return self.get_best_path()
 
+    # Method to get the explored nodes
     def explored_nodes(self):
+        # Return keys of closed nodes
         return self.closed_nodes.keys()
-
-
-
-
-
-
-
-
-
-
-
