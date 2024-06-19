@@ -145,7 +145,7 @@ def main():
         # Number of drones slider
         num_drones = st.slider(label='Number of Drones', min_value=1, max_value=10, value=1)
         # Crossover type select box
-        crossover_type = st.selectbox('Crossover Type', ['Uniform', 'One-Point', 'Heuristic'], index=0)
+        crossover_type = st.selectbox('Crossover Type', ['Uniform', 'One-Point', 'Heuristic'], index=2)
         # Mutation rate slider
         mutation_rate = st.slider(label='Mutation Rate %', min_value=0, max_value=100, value=2, step=1)
 
