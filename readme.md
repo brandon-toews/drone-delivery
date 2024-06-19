@@ -5,9 +5,9 @@
     2. Install dependencies: `pip install matplotlib`
     3. Run code: `streamlit run main.py`
 
-    or 
+or 
 
-### 🚀 Play [Demo](https://brandon-toews.github.io/drone-delivery/)
+### 🔥 Play [Demo](https://brandon-toews.github.io/drone-delivery/)
 🚧 **Allow a few seconds for UI to update after making selections or clicking buttons. DOES NOT RUN ON FIREFOX BROWSERS**
 
 ## Instuctions
