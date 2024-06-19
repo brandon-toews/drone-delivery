@@ -18,14 +18,29 @@
     <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.6/build/stlite.js"></script>
     <script>
       stlite.mount(
-        `
-import streamlit as st
-
-name = st.text_input('Your name')
-st.write("Hello,", name or "world")
-`,
+        {
+            requirements: ["matplotlib"],
+            entrypoint: "main.py", // The target file of the `streamlit run` command
+            files: {
+                "main.py": {
+                url: "https://github.com/brandon-toews/drone-delivery/main.py",
+                },
+                "graph.py": {
+                url: "https://github.com/brandon-toews/drone-delivery/graph.py",
+                },
+                "a_star.py": {
+                url: "https://github.com/brandon-toews/drone-delivery/a_star.py",
+                },
+                "gen_alg.py": {
+                url: "https://github.com/brandon-toews/drone-delivery/gen_alg.py",
+                },
+                "drone.py": {
+                url: "https://github.com/brandon-toews/drone-delivery/drone.py",
+                },
+            },
+        },
         document.getElementById("root")
-      );
+    );
     </script>
   </body>
 </html>
